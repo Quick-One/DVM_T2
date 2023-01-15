@@ -1,0 +1,28 @@
+{% extends "quiz/base.html" %}
+{% block content %}
+
+
+{% if user.is_authenticated %}
+<h4>Hello user "{{user.username}}" </h4>
+{% endif %}
+
+{% if user.quizuser.user_type == "QT" %}
+<h4>You can give quizzes or view your past responses.</h4>
+{%else%}
+<h4>You can create or update quizzes created by you.</h4>
+{% endif %}
+
+
+{% for post in posts %}
+<article class="media content-section">
+  <div class="media-body">
+    <div class="article-metadata">
+      <a class="mr-2" href="#">{{ post.author }}</a>
+      <small class="text-muted">{{ post.date_posted }}</small>
+    </div>
+    <h2><a class="article-title" href="#">{{ post.title }}</a></h2>
+    <p class="article-content">{{ post.content }}</p>
+  </div>
+</article>
+{% endfor %}
+{% endblock content %}

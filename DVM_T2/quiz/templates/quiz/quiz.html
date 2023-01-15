@@ -1,0 +1,21 @@
+{% extends "quiz/base.html" %}
+{% block content %}
+{% if size == 0 %}
+<h4>You have not created any questionares yet. Create a questionare
+    <a href="{% url 'new' %}">now</a>.
+</h4>
+{% else %}
+{% for quiz in questionaires %}
+<article class="media content-section">
+    <div class="media-body">
+        <div class="article-metadata">
+            <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'quiz-detail' quiz.pk%}">Edit</a>
+            <a class="btn btn-danger btn-sm mt-1 mb-1" href="{%url 'quiz-delete' quiz.pk%}">Delete</a>
+        </div>
+        <h2><a class="article-title" href="{%url 'quiz-detail' quiz.pk%}">{{ quiz.title }}</a></h2>
+        <p class="article-content">{{ quiz.description }}</p>
+    </div>
+</article>
+{% endfor %}
+{% endif %}
+{% endblock content %}

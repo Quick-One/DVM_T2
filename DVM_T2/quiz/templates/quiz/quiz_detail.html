@@ -1,0 +1,26 @@
+{% extends "quiz/base.html" %}
+{% block content %}
+<h1>Quiz: {{ quiz.title }}</h1>
+<h4>Quiz Description: {{ quiz.description }}</h4>
+<hr>
+{% if size == 0 %}
+<h4>You have not created any questions yet. Create a question
+    <a href="{% url 'question-add' pk%}">now</a>.
+</h4>
+{% else %}
+<h3><a class="btn btn-primary btn mt-2 mb-3" href="{%url 'question-add' pk%}">Add Question</a></h3>
+{% for question in questions %}
+
+<article class="media content-section">
+    <div class="media-body">
+        <div class="article-metadata">
+            <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'question-edit' question.pk%}">Edit</a>
+            <a class="btn btn-danger btn-sm mt-1 mb-1" href="{%url 'question-delete' question.pk%}">Delete</a>
+        </div>
+        <h2><a class="article-title" href="{%url 'question-edit' question.pk%}">{{ question.question }}</a></h2>
+        <p class="article-content">{{question.get_options}}</p>
+    </div>
+</article>
+{% endfor %}
+{% endif %}
+{% endblock content %}

@@ -1,0 +1,18 @@
+{% extends "quiz/base.html" %}
+{% block content %}
+{% if size == 0 %}
+<h4>No active quizzes.</h4>
+{% else %}
+{% for quiz in questionaires %}
+<article class="media content-section">
+    <div class="media-body">
+        <div class="article-metadata">
+            <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'attempt-quiz' quiz.pk%}">Attempt</a>
+        </div>
+        <h2><a class="article-title" href="{%url 'attempt-quiz' quiz.pk%}">{{ quiz.title }}</a></h2>
+        <p class="article-content">{{ quiz.description }}</p>
+    </div>
+</article>
+{% endfor %}
+{% endif %}
+{% endblock content %}
