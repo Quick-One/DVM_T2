@@ -1,3 +1,4 @@
+from collections import deque
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .forms import NewQuizForm, NewQuestion
@@ -8,14 +9,18 @@ from django.contrib import messages
 
 def get_unanswered_quizzes(user):
     answered_questions = user.response_set.all()
-    answered_quizzes_id = set([q.question.questionaire.pk for q in answered_questions])
+    answered_quizzes_id = set(
+        [q.question.questionaire.pk for q in answered_questions])
     all_quizzes = Questionaire.objects.all()
-    unanswered_quizzes = [q for q in all_quizzes if q.pk not in answered_quizzes_id]
+    unanswered_quizzes = [
+        q for q in all_quizzes if q.pk not in answered_quizzes_id]
     return unanswered_quizzes
+
 
 def get_answered_quizzes(user):
     answered_questions = user.response_set.all()
-    answered_quizzes_id = set([q.question.questionaire.pk for q in answered_questions])
+    answered_quizzes_id = set(
+        [q.question.questionaire.pk for q in answered_questions])
     return [Questionaire.objects.get(pk=q) for q in answered_quizzes_id]
 
 
@@ -23,13 +28,12 @@ def get_answered_quizzes(user):
 def home(request):
     return render(request, 'quiz/home.html')
 
+
 @login_required
 def new_quiz(request):
 
-
     if request.user.quizuser.user_type != 'QM':
         raise PermissionDenied
-
 
     if request.method == 'POST':
         form = NewQuizForm(request.POST)
@@ -55,7 +59,6 @@ def new_quiz(request):
 def show_quizzes(request):
     if request.user.quizuser.user_type != 'QM':
         raise PermissionDenied
-
 
     questionaires = Questionaire.objects.filter(author=request.user)
     size = len(questionaires)
@@ -111,22 +114,23 @@ def quiz_detail(request, pk):
 
     if request.user.quizuser.user_type != 'QM':
         raise PermissionDenied
-    
-    #allow access only if user is the author of the quiz
+
+    # allow access only if user is the author of the quiz
     if request.user != Questionaire.objects.get(pk=pk).author:
         raise PermissionDenied
 
     questionaire = Questionaire.objects.get(pk=pk)
     questions = questionaire.mcquestion_set.all()
-    return render(request, 'quiz/quiz_detail.html', {'questions': questions, 
-    'size': len(questions), 'pk': pk, 'quiz': questionaire})
+    return render(request, 'quiz/quiz_detail.html', {'questions': questions,
+                                                     'size': len(questions), 'pk': pk, 'quiz': questionaire})
+
 
 @login_required
 def question_delete(request, pk):
 
     if request.user.quizuser.user_type != 'QM':
         raise PermissionDenied
-    
+
     # Deny access if user is not the author of the quiz
     question = MCQuestion.objects.get(pk=pk)
     questionaire = question.questionaire
@@ -135,6 +139,7 @@ def question_delete(request, pk):
         raise PermissionDenied
     question.delete()
     return redirect('quiz-detail', pk=questionaire.pk)
+
 
 @login_required
 def question_edit(request, pk):
@@ -160,13 +165,14 @@ def question_edit(request, pk):
             messages.success(request, f'Question edited!')
             return redirect('quiz-detail', pk=questionaire.pk)
     else:
-        form = NewQuestion(initial={'question': question.question, 'option_A': question.option_A, 
-        'option_B': question.option_B, 'option_C': question.option_C, 'option_D': question.option_D, 
-        'answer': question.answer})
+        form = NewQuestion(initial={'question': question.question, 'option_A': question.option_A,
+                                    'option_B': question.option_B, 'option_C': question.option_C, 'option_D': question.option_D,
+                                    'answer': question.answer})
     context = {
         'form': form
     }
     return render(request, 'quiz/new_quiz.html', context)
+
 
 @login_required
 def active_quizzes(request):
@@ -178,24 +184,50 @@ def active_quizzes(request):
     return render(request, 'quiz/active_quiz.html', {'questionaires': questionaires, 'size': len(questionaires)})
 
 
+# Import stack
+
+quiz_attempt_cache = {}
+
 @login_required
 def attempt_quiz(request, pk):
+
     if request.user.quizuser.user_type != 'QT':
         raise PermissionDenied
 
-    if pk not in [q.pk for q in get_unanswered_quizzes(request.user)]: #check if quiz is active
+    if (request.user, pk) in quiz_attempt_cache:
+        question_stack, response_list = quiz_attempt_cache[(request.user, pk)]
+
+        if request.method == 'POST':
+            question = question_stack.popleft()
+            form = question.response_form()(request.POST)
+            if form.is_valid():
+                answer = form.cleaned_data.get('answer')
+                response = Response(
+                    responder=request.user,
+                    question=question,
+                    answer=answer
+                )
+                response_list.append(response)
+
+        if len(question_stack) == 0:
+            quiz_attempt_cache.pop((request.user, pk))
+            for response in response_list:
+                response.save()
+            return redirect('quiz-result', pk=pk)
+        question = question_stack[0]
+        form = question.response_form()
+        return render(request, 'registration/register.html', {'form': form})
+
+    # check if quiz is active
+    if pk not in [q.pk for q in get_unanswered_quizzes(request.user)]:
         raise PermissionDenied
 
     questionaire = Questionaire.objects.get(pk=pk)
     questions = questionaire.mcquestion_set.all()
-
-    if request.method == 'POST':
-        resp = list(dict(request.POST).values())[1:]
-        for q, r in zip(questions, resp):
-            new_response = Response(question=q, answer=r[0], responder=request.user)
-            new_response.save()
-        return redirect('quiz-result', pk=pk)
-    return render(request, 'quiz/attempt_quiz.html', {'questions': questions, 'size': len(questions), 'pk': pk})
+    response_list = []
+    question_stack = deque(questions)
+    quiz_attempt_cache[(request.user, pk)] = (question_stack, response_list)
+    return redirect('attempt-quiz', pk=pk)
 
 @login_required
 def quiz_result(request, pk):
@@ -206,8 +238,10 @@ def quiz_result(request, pk):
         raise PermissionDenied
 
     quiz = Questionaire.objects.get(pk=pk)
-    responses = Response.objects.filter(question__questionaire=quiz, responder=request.user)
+    responses = Response.objects.filter(
+        question__questionaire=quiz, responder=request.user)
     return render(request, 'quiz/quiz_result.html', {'responses': responses, 'size': len(responses), 'quiz': quiz})
+
 
 @login_required
 def attempted_quizzes(request):

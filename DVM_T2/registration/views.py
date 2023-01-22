@@ -1,21 +1,23 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import QuizUser
-from .forms import UserRegisterForm
+from .forms import QuizUserForm, TestForm
 
-# Create your views here.
 def register(request):
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        form = QuizUserForm(request.POST)
         if form.is_valid():
-
             new_user = form.save()
-            new_quiz_user = QuizUser(user=new_user, user_type=form.cleaned_data.get('user_type'))
-            new_quiz_user.save()
-
-            messages.success(request, f'Account created for {new_user.username}!')
-            
+            messages.success(request, f'Account created for {new_user.user.username}!')
             return redirect('login')
     else:
-        form = UserRegisterForm()
+        form = QuizUserForm()
+    return render(request, 'registration/register.html', {'form': form})
+
+def test(request):
+    if request.method == 'POST':
+        form = TestForm(request.POST)
+        if form.is_valid():
+            print(form.cleaned_data)
+    else:
+        form = TestForm()
     return render(request, 'registration/register.html', {'form': form})
