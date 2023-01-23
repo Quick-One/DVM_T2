@@ -1,10 +1,13 @@
 from collections import deque
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .forms import NewQuizForm, NewQuestion
-from .models import Questionaire, MCQuestion, Response
-from django.core.exceptions import PermissionDenied
+
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect, render
+
+from .forms import (ChooseQuestionTypeForm, NewMultipleChoiceQuestionForm,
+                    NewNumQuestionForm, NewQuizForm, NewTFQuestionForm, get_form)
+from .models import (Question, Questionaire, Response)
 
 
 def get_unanswered_quizzes(user):
@@ -14,6 +17,8 @@ def get_unanswered_quizzes(user):
     all_quizzes = Questionaire.objects.all()
     unanswered_quizzes = [
         q for q in all_quizzes if q.pk not in answered_quizzes_id]
+    unanswered_quizzes = [
+        q for q in unanswered_quizzes if len(q.question_set.all()) != 0]
     return unanswered_quizzes
 
 
@@ -31,28 +36,20 @@ def home(request):
 
 @login_required
 def new_quiz(request):
-
     if request.user.quizuser.user_type != 'QM':
         raise PermissionDenied
 
     if request.method == 'POST':
         form = NewQuizForm(request.POST)
         if form.is_valid():
-            form_data = form.cleaned_data
-            title = form_data.get('title')
-            description = form_data.get('description')
-            author = request.user
-            new_quiz = Questionaire(
-                title=title, description=description, author=author)
+            new_quiz = form.save(commit=False)
+            new_quiz.author = request.user
             new_quiz.save()
             messages.success(request, f'New quiz created!')
             return redirect('quiz-detail', pk=new_quiz.pk)
     else:
         form = NewQuizForm()
-    context = {
-        'form': form
-    }
-    return render(request, 'quiz/new_quiz.html', context)
+    return render(request, 'quiz/new_quiz.html', {'form': form})
 
 
 @login_required
@@ -86,27 +83,64 @@ def question_add(request, pk):
         raise PermissionDenied
 
     if request.method == 'POST':
-        form = NewQuestion(request.POST)
+        form = ChooseQuestionTypeForm(request.POST)
         if form.is_valid():
             form_data = form.cleaned_data
-            question = form_data.get('question')
-            option_A = form_data.get('option_A')
-            option_B = form_data.get('option_B')
-            option_C = form_data.get('option_C')
-            option_D = form_data.get('option_D')
-            answer = form_data.get('answer')
-            questionaire = Questionaire.objects.get(pk=pk)
-            new_question = MCQuestion(questionaire=questionaire, question=question, option_A=option_A,
-                                      option_B=option_B, option_C=option_C, option_D=option_D, answer=answer)
+            question_type = form_data.get('question_type')
+            if question_type == 'TF':
+                return redirect('tf-add', pk=pk)
+            elif question_type == 'NUM':
+                return redirect('num-add', pk=pk)
+            elif question_type == 'MCQ':
+                return redirect('mcq-add', pk=pk)
+    else:
+        form = ChooseQuestionTypeForm()
+    return render(request, 'quiz/new_quiz.html', {'form': form})
+
+
+@login_required
+def new_multiple_choice(request, pk):
+    if request.method == 'POST':
+        form = NewMultipleChoiceQuestionForm(request.POST)
+        if form.is_valid():
+            new_question = form.save(commit=False)
+            new_question.questionaire = Questionaire.objects.get(pk=pk)
             new_question.save()
             messages.success(request, f'New question added!')
             return redirect('quiz-detail', pk=pk)
     else:
-        form = NewQuestion()
-    context = {
-        'form': form
-    }
-    return render(request, 'quiz/new_quiz.html', context)
+        form = NewMultipleChoiceQuestionForm()
+    return render(request, 'quiz/new_quiz.html', {'form': form})
+
+
+@login_required
+def new_true_false(request, pk):
+    if request.method == 'POST':
+        form = NewTFQuestionForm(request.POST)
+        if form.is_valid():
+            new_question = form.save(commit=False)
+            new_question.questionaire = Questionaire.objects.get(pk=pk)
+            new_question.save()
+            messages.success(request, f'New question added!')
+            return redirect('quiz-detail', pk=pk)
+    else:
+        form = NewTFQuestionForm()
+    return render(request, 'quiz/new_quiz.html', {'form': form})
+
+
+@login_required
+def new_numerical(request, pk):
+    if request.method == 'POST':
+        form = NewNumQuestionForm(request.POST)
+        if form.is_valid():
+            new_question = form.save(commit=False)
+            new_question.questionaire = Questionaire.objects.get(pk=pk)
+            new_question.save()
+            messages.success(request, f'New question added!')
+            return redirect('quiz-detail', pk=pk)
+    else:
+        form = NewNumQuestionForm()
+    return render(request, 'quiz/new_quiz.html', {'form': form})
 
 
 @login_required
@@ -120,7 +154,7 @@ def quiz_detail(request, pk):
         raise PermissionDenied
 
     questionaire = Questionaire.objects.get(pk=pk)
-    questions = questionaire.mcquestion_set.all()
+    questions = questionaire.question_set.all()
     return render(request, 'quiz/quiz_detail.html', {'questions': questions,
                                                      'size': len(questions), 'pk': pk, 'quiz': questionaire})
 
@@ -132,7 +166,7 @@ def question_delete(request, pk):
         raise PermissionDenied
 
     # Deny access if user is not the author of the quiz
-    question = MCQuestion.objects.get(pk=pk)
+    question = Question.objects.get(pk=pk)
     questionaire = question.questionaire
 
     if questionaire.author != request.user:
@@ -143,40 +177,31 @@ def question_delete(request, pk):
 
 @login_required
 def question_edit(request, pk):
-    question = MCQuestion.objects.get(pk=pk)
-    questionaire = question.questionaire
 
     if request.user.quizuser.user_type != 'QM':
         raise PermissionDenied
+
+    question = Question.objects.get(pk=pk).TypedQuestion
+    qtype = question.type
+    questionaire = question.questionaire
+
     # Deny access if user is not the author of the quiz
     if questionaire.author != request.user:
         raise PermissionDenied
+
     if request.method == 'POST':
-        form = NewQuestion(request.POST)
+        form = get_form(qtype)(request.POST, instance=question)
         if form.is_valid():
-            form_data = form.cleaned_data
-            question.question = form_data.get('question')
-            question.option_A = form_data.get('option_A')
-            question.option_B = form_data.get('option_B')
-            question.option_C = form_data.get('option_C')
-            question.option_D = form_data.get('option_D')
-            question.answer = form_data.get('answer')
-            question.save()
-            messages.success(request, f'Question edited!')
+            form.save()
+            messages.success(request, f'Question updated!')
             return redirect('quiz-detail', pk=questionaire.pk)
     else:
-        form = NewQuestion(initial={'question': question.question, 'option_A': question.option_A,
-                                    'option_B': question.option_B, 'option_C': question.option_C, 'option_D': question.option_D,
-                                    'answer': question.answer})
-    context = {
-        'form': form
-    }
-    return render(request, 'quiz/new_quiz.html', context)
+        form = get_form(qtype)(instance=question)
+    return render(request, 'quiz/new_quiz.html', {'form': form})
 
 
 @login_required
 def active_quizzes(request):
-    print("active quizzes")
     if request.user.quizuser.user_type != 'QT':
         raise PermissionDenied
 
@@ -184,9 +209,8 @@ def active_quizzes(request):
     return render(request, 'quiz/active_quiz.html', {'questionaires': questionaires, 'size': len(questionaires)})
 
 
-# Import stack
-
 quiz_attempt_cache = {}
+
 
 @login_required
 def attempt_quiz(request, pk):
@@ -223,11 +247,13 @@ def attempt_quiz(request, pk):
         raise PermissionDenied
 
     questionaire = Questionaire.objects.get(pk=pk)
-    questions = questionaire.mcquestion_set.all()
+    questions = questionaire.question_set.all()
+    questions = [q.TypedQuestion for q in questions]
     response_list = []
     question_stack = deque(questions)
     quiz_attempt_cache[(request.user, pk)] = (question_stack, response_list)
     return redirect('attempt-quiz', pk=pk)
+
 
 @login_required
 def quiz_result(request, pk):
