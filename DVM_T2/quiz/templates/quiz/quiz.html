@@ -5,17 +5,34 @@
     <a href="{% url 'new' %}">now</a>.
 </h4>
 {% else %}
-{% for quiz in questionaires %}
 <article class="media content-section">
     <div class="media-body">
-        <div class="article-metadata">
-            <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'quiz-detail' quiz.pk%}">Edit</a>
-            <a class="btn btn-danger btn-sm mt-1 mb-1" href="{%url 'quiz-delete' quiz.pk%}">Delete</a>
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered table-striped">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Edit</th>
+                        <th scope="col">Responses</th>
+                        <th scope="col">Delete</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for quiz in questionaires %}
+                    <tr>
+                        <td>{{ quiz.title }}</td>
+                        <td>{{ quiz.description }}</td>
+                        <td><a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'quiz-detail' quiz.pk%}">Edit</a>
+                        </td>
+                        <td>BLANK</td>
+                        <td><a class="btn btn-danger btn-sm mt-1 mb-1" href="{%url 'quiz-delete' quiz.pk%}">Delete</a>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <h2><a class="article-title" href="{%url 'quiz-detail' quiz.pk%}">{{ quiz.title }}</a></h2>
-        <p class="article-content">{{ quiz.description }}</p>
     </div>
 </article>
-{% endfor %}
 {% endif %}
 {% endblock content %}
