@@ -1,16 +1,35 @@
 {% extends "quiz/base.html" %}
 {% block content %}
 <h1>Quiz: {{ quiz.title }}</h1>
-<h4>Quiz Description: {{ quiz.description }}</h4>
-<hr>
 
+{% if quiz.description %}
+<h4>Quiz Description: {{ quiz.description }}</h4>
+{% endif %}
+
+<hr>
+<h4>Total Score: {{score}} / {{total}}</h4>
 {% for response in responses %}
 
 <article class="media content-section">
     <div class="media-body">
-        <h2><a class="article-title" href="#">{{ response.question.question }}</a></h2>
-        <p class="article-content">{{response.question.get_options}}</p>
-        <p class="article-content">Your Answer: {{response.answer}}</p>
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered table-striped">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Parameter</th>
+                        <th scope="col">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p,v in response.description_dict.items %}
+                    <tr>
+                        <td>{{ p }}</td>
+                        <td>{{ v }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </article>
 {% endfor %}

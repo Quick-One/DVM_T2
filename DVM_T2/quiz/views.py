@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 
 from .forms import (ChooseQuestionTypeForm, NewMultipleChoiceQuestionForm,
                     NewNumQuestionForm, NewQuizForm, NewTFQuestionForm, get_form)
-from .models import (Question, Questionaire, Response)
+from .models import (Question, Questionaire, Response, get_response_class)
 
 
 def get_unanswered_quizzes(user):
@@ -226,9 +226,11 @@ def attempt_quiz(request, pk):
             form = question.response_form()(request.POST)
             if form.is_valid():
                 answer = form.cleaned_data.get('answer')
-                response = Response(
-                    responder=request.user,
+                print(answer)
+                response_cls = get_response_class(question.type)
+                response = response_cls(
                     question=question,
+                    user=request.user,
                     answer=answer
                 )
                 response_list.append(response)
@@ -240,7 +242,7 @@ def attempt_quiz(request, pk):
             return redirect('quiz-result', pk=pk)
         question = question_stack[0]
         form = question.response_form()
-        return render(request, 'registration/register.html', {'form': form})
+        return render(request, 'quiz/quiz_question.html', {'form': form, 'question': question})
 
     # check if quiz is active
     if pk not in [q.pk for q in get_unanswered_quizzes(request.user)]:
@@ -265,8 +267,15 @@ def quiz_result(request, pk):
 
     quiz = Questionaire.objects.get(pk=pk)
     responses = Response.objects.filter(
-        question__questionaire=quiz, responder=request.user)
-    return render(request, 'quiz/quiz_result.html', {'responses': responses, 'size': len(responses), 'quiz': quiz})
+        question__questionaire=quiz, user=request.user)
+    responses = [r.TypedResponse for r in responses]
+    context = {
+        'responses': responses,
+        'quiz': quiz,
+        'score': sum([r.get_score() for r in responses]),
+        'total': sum([r.question.reward for r in responses])
+    }
+    return render(request, 'quiz/quiz_result.html', context)
 
 
 @login_required

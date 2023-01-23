@@ -30,6 +30,9 @@ class Question(models.Model):
     def __str__(self):
         return self.question
 
+    def check_answer(self, answer):
+        return self.TypedQuestion.answer == answer
+
     @property
     def TypedQuestion(self):
         try:
@@ -44,7 +47,7 @@ class Question(models.Model):
             return self.numquestion
         except NumQuestion.DoesNotExist:
             pass
-        
+
     @property
     def description_dict(self):
         return {
@@ -55,7 +58,6 @@ class Question(models.Model):
         }
 
 
-
 class Response(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -63,8 +65,34 @@ class Response(models.Model):
     def __str__(self):
         return f'{self.user.username} - {self.question.question}'
 
-    def check_answer(self, answer):
-        return self.question.TypedQuestion.check_answer(answer)
+    def get_score(self):
+        if self.question.check_answer(self.TypedResponse.answer):
+            return self.question.reward
+        else:
+            return -self.question.penalty
+    
+    def description_dict(self):
+        d = {}
+        d['Question'] = self.question.question
+        d['Your Answer'] = self.TypedResponse.answer
+        d['Correct Answer'] = self.question.TypedQuestion.answer
+        d['Score'] = f'{self.get_score()}/{self.question.reward}'
+        return d
+
+    @property
+    def TypedResponse(self):
+        try:
+            return self.multiplechoiceresponse
+        except MultipleChoiceResponse.DoesNotExist:
+            pass
+        try:
+            return self.tfresponse
+        except TFResponse.DoesNotExist:
+            pass
+        try:
+            return self.numresponse
+        except NumResponse.DoesNotExist:
+            pass
 
 
 class TFQuestion(Question):
@@ -79,15 +107,11 @@ class TFQuestion(Question):
             )
         return ResponseForm
 
-    def check_answer(self, answer):
-        return self.answer == answer
-    
     @property
     def description_dict(self):
         d = super().description_dict
         d['Answer'] = self.answer
         return d
-
 
 
 class TFResponse(Response):
@@ -103,16 +127,11 @@ class NumQuestion(Question):
             answer = forms.IntegerField()
         return ResponseForm
 
-    def check_answer(self, answer):
-        return self.answer == answer
-    
     @property
     def description_dict(self):
         d = super().description_dict
         d['Answer'] = self.answer
         return d
-
-    
 
 
 class NumResponse(Response):
@@ -137,13 +156,16 @@ class MultipleChoiceQuestion(Question):
 
     def response_form(self):
         class ResponseForm(forms.Form):
+            choices = [
+                ('A', self.option_A),
+                ('B', self.option_B),
+                ('C', self.option_C),
+                ('D', self.option_D),
+            ]
             answer = forms.CharField(
-                widget=forms.RadioSelect(choices=MCQ_TYPE_CHOICES)
+                widget=forms.RadioSelect(choices=choices)
             )
         return ResponseForm
-
-    def check_answer(self, answer):
-        return self.answer == answer
 
     @property
     def description_dict(self):
@@ -154,9 +176,39 @@ class MultipleChoiceQuestion(Question):
         d['option_C'] = self.option_C
         d['option_D'] = self.option_D
         return d
+    
+    def get_option(self, option):
+        if option == 'A':
+            return self.option_A
+        elif option == 'B':
+            return self.option_B
+        elif option == 'C':
+            return self.option_C
+        elif option == 'D':
+            return self.option_D
+        else:
+            raise ValueError('Invalid option')
+
 
 class MultipleChoiceResponse(Response):
     answer = models.CharField(max_length=1, choices=MCQ_TYPE_CHOICES)
+
+    def description_dict(self):
+        d = super().description_dict()
+        d['Your Answer'] = f"{self.answer}) {self.question.TypedQuestion.get_option(self.answer)} "  
+        d['Correct Answer'] = f"{self.question.TypedQuestion.answer}) {self.question.TypedQuestion.get_option(self.question.TypedQuestion.answer)}"
+        return d
+
+
+def get_response_class(qtype):
+    if qtype is QType.MCQ:
+        return MultipleChoiceResponse
+    elif qtype is QType.TF:
+        return TFResponse
+    elif qtype is QType.NUM:
+        return NumResponse
+    else:
+        raise ValueError('Invalid question type')
 
 
 admin.site.register(Questionaire)
