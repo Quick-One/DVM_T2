@@ -101,9 +101,9 @@ class TFQuestion(Question):
 
     def response_form(self):
         class ResponseForm(forms.Form):
-            answer = forms.BooleanField(
-                widget=forms.RadioSelect(
-                    choices=[(True, 'True'), (False, 'False')])
+            answer = forms.ChoiceField(
+                widget=forms.RadioSelect,
+                choices=[(True, 'True'), (False, 'False')]
             )
         return ResponseForm
 

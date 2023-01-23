@@ -2,37 +2,37 @@
 {% block content %}
 {% if size == 0 %}
 <h4>You have not created any questionares yet. Create a questionare
-    <a href="{% url 'new' %}">now</a>.
+  <a href="{% url 'new' %}">now</a>.
 </h4>
 {% else %}
 <article class="media content-section">
-    <div class="media-body">
-        <div class="table-responsive">
-            <table class="table table-hover table-bordered table-striped">
-                <thead class="thead-dark">
-                    <tr>
-                        <th scope="col">Title</th>
-                        <th scope="col">Description</th>
-                        <th scope="col">Edit</th>
-                        <th scope="col">Responses</th>
-                        <th scope="col">Delete</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for quiz in questionaires %}
-                    <tr>
-                        <td>{{ quiz.title }}</td>
-                        <td>{{ quiz.description }}</td>
-                        <td><a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'quiz-detail' quiz.pk%}">Edit</a>
-                        </td>
-                        <td>BLANK</td>
-                        <td><a class="btn btn-danger btn-sm mt-1 mb-1" href="{%url 'quiz-delete' quiz.pk%}">Delete</a>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+  <div class="media-body">
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered table-striped">
+        <thead class="thead-dark">
+          <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Description</th>
+            <th scope="col">Edit</th>
+            <th scope="col">Scorebook</th>
+            <th scope="col">Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for quiz in questionaires %}
+          <tr>
+            <td>{{ quiz.title }}</td>
+            <td>{{ quiz.description }}</td>
+            <td><a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'quiz-detail' quiz.pk%}">Edit</a>
+            </td>
+            <td><a class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'scorebook' quiz.pk%}">Download</a></td>
+            <td><a class="btn btn-danger btn-sm mt-1 mb-1" href="{%url 'quiz-delete' quiz.pk%}">Delete</a>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
 </article>
 {% endif %}
 {% endblock content %}

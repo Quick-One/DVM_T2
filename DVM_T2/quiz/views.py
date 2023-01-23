@@ -4,6 +4,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
+from django.http import HttpResponse
+from django.contrib.auth.models import User
+
+from openpyxl import Workbook
 
 from .forms import (ChooseQuestionTypeForm, NewMultipleChoiceQuestionForm,
                     NewNumQuestionForm, NewQuizForm, NewTFQuestionForm, get_form)
@@ -234,9 +238,12 @@ def attempt_quiz(request, pk):
                     answer=answer
                 )
                 response_list.append(response)
+            else:
+                return render(request, 'quiz/quiz_question.html', {'form': form, 'question': question})
 
         if len(question_stack) == 0:
             quiz_attempt_cache.pop((request.user, pk))
+            print(response_list)
             for response in response_list:
                 response.save()
             return redirect('quiz-result', pk=pk)
@@ -285,3 +292,23 @@ def attempted_quizzes(request):
 
     questionaires = get_answered_quizzes(request.user)
     return render(request, 'quiz/attempted.html', {'questionaires': questionaires, 'size': len(questionaires)})
+
+@login_required
+def scorebook(request, pk):
+    response =  HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="Scorebook.xlsx"'
+    wb = Workbook()
+    sheet = wb.active
+    
+    sheet.append(['Username', 'Score'])
+    questionaire = Questionaire.objects.get(pk=pk)
+    responders = Response.objects.filter(question__questionaire=questionaire).values_list('user', flat=True).distinct()
+    for r in responders:
+        responder = User.objects.get(pk=r)
+        responses = Response.objects.filter(question__questionaire=questionaire, user=responder)
+        responses = [r.TypedResponse for r in responses]
+        score = sum([r.get_score() for r in responses])
+        sheet.append([responder.username, score])
+    
+    wb.save(response)
+    return response
