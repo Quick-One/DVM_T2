@@ -6,6 +6,7 @@ urlpatterns = [
     path('quiz/new/', views.new_quiz, name='new'),
     path('quiz/<int:pk>/delete/', views.quiz_delete, name='quiz-delete'),
     path('quiz/<int:pk>/scorebook/', views.scorebook, name='scorebook'),
+    path('quiz/<int:pk>/leaderboard/', views.leaderboard, name='leaderboard'),
     path('quiz/<int:pk>/add/MCQ/', views.new_multiple_choice, name='mcq-add'),
     path('quiz/<int:pk>/add/TF/', views.new_true_false, name='tf-add'),
     path('quiz/<int:pk>/add/Num/', views.new_numerical, name='num-add'),

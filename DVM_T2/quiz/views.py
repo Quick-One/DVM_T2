@@ -312,3 +312,18 @@ def scorebook(request, pk):
     
     wb.save(response)
     return response
+
+@login_required
+def leaderboard(request, pk):
+    questionaire = Questionaire.objects.get(pk=pk)
+    responders = Response.objects.filter(question__questionaire=questionaire).values_list('user', flat=True).distinct()
+    scores = []
+    for r in responders:
+        responder = User.objects.get(pk=r)
+        responses = Response.objects.filter(question__questionaire=questionaire, user=responder)
+        responses = [r.TypedResponse for r in responses]
+        score = sum([r.get_score() for r in responses])
+        scores.append((responder, score))
+    scores.sort(key=lambda x: x[1], reverse=True)
+    scores = scores[:10]
+    return render(request, 'quiz/leaderboard.html', {'scores': scores, 'quiz': questionaire})
