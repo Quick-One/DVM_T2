@@ -21,3 +21,6 @@ def test(request):
     else:
         form = TestForm()
     return render(request, 'registration/register.html', {'form': form})
+
+def test2(request):
+    return render(request, "registration/index.html")
