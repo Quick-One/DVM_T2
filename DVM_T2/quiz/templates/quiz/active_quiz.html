@@ -14,6 +14,7 @@
                         <th scope="col">Title</th>
                         <th scope="col">Description</th>
                         <th scope="col">Attempt</th>
+                        <th scope="col">Leaderboard</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,6 +25,10 @@
                         <td><a class="btn btn-secondary btn-sm mt-1 mb-1"
                                 href="{%url 'attempt-quiz' quiz.pk%}">Attempt</a>
                         </td>
+                        <td><a class="btn btn-secondary btn-sm mt-1 mb-1"
+                                href="{%url 'leaderboard' quiz.pk%}">Leaderboard</a>
+                        </td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
