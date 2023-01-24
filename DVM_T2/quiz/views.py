@@ -6,11 +6,12 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render
 from django.http import HttpResponse
 from django.contrib.auth.models import User
+from collections import defaultdict
 
 from openpyxl import Workbook
 
 from .forms import (ChooseQuestionTypeForm, NewMultipleChoiceQuestionForm,
-                    NewNumQuestionForm, NewQuizForm, NewTFQuestionForm, get_form)
+                    NewNumQuestionForm, NewQuizForm, NewTFQuestionForm, get_form, PINForm)
 from .models import (Question, Questionaire, Response, get_response_class)
 
 
@@ -215,6 +216,7 @@ def active_quizzes(request):
 
 quiz_attempt_cache = {}
 
+quiz_permission_cache = defaultdict(set)
 
 @login_required
 def attempt_quiz(request, pk):
@@ -256,6 +258,8 @@ def attempt_quiz(request, pk):
         raise PermissionDenied
 
     questionaire = Questionaire.objects.get(pk=pk)
+    if questionaire.private and (request.user.pk not in quiz_permission_cache[pk]):
+        return redirect('quiz-lock', pk=pk)
     questions = questionaire.question_set.all()
     questions = [q.TypedQuestion for q in questions]
     response_list = []
@@ -327,3 +331,22 @@ def leaderboard(request, pk):
     scores.sort(key=lambda x: x[1], reverse=True)
     scores = scores[:10]
     return render(request, 'quiz/leaderboard.html', {'scores': scores, 'quiz': questionaire})
+
+@login_required
+def quiz_lock(request, pk):
+    if request.user.quizuser.user_type != 'QT':
+        raise PermissionDenied
+
+    if request.method == 'POST':
+        form = PINForm(request.POST)
+        if form.is_valid():
+            pin = form.cleaned_data.get('PIN')
+            if pin == Questionaire.objects.get(pk=pk).PIN:
+                quiz_permission_cache[pk].add(request.user.pk)
+                return redirect('attempt-quiz', pk=pk)
+            else:
+                messages.error(request, f'Incorrect PIN!')
+                return redirect('quiz-lock', pk=pk)
+    else:
+        form = PINForm()
+    return render(request, 'quiz/new_quiz.html', {'form': form})
