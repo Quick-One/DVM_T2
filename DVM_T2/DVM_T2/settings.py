@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'registration.middleware.QuizUserRequiredMiddleware',
 ]
 
 ROOT_URLCONF = 'DVM_T2.urls'

@@ -13,6 +13,17 @@ def register(request):
         form = QuizUserForm()
     return render(request, 'registration/register.html', {'form': form})
 
+def google_register(request):
+    if request.method == 'POST':
+        form = QuizUserForm(request.POST, instance=request.user)
+        if form.is_valid():
+            new_user = form.save()
+            messages.success(request, f'Account created for {new_user.user.username}!')
+            return redirect('login')
+    else:
+        form = QuizUserForm()
+    return render(request, 'registration/google_register.html', {'form': form})
+
 def test(request):
     if request.method == 'POST':
         form = TestForm(request.POST)
