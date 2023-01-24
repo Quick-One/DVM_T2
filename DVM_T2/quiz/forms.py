@@ -4,7 +4,7 @@ from .models import MultipleChoiceQuestion, TFQuestion, NumQuestion, Questionair
 class NewQuizForm(forms.ModelForm):
     class Meta:
         model = Questionaire
-        fields = ['title', 'description']
+        fields = ['title', 'description', 'private', 'PIN']
     
     def save(self, commit=True):
         quiz = super().save(commit=False)
@@ -52,6 +52,9 @@ class NewMultipleChoiceQuestionForm(forms.ModelForm):
         if commit:
             question.save()
         return question
+
+class PINForm(forms.Form):
+    PIN = forms.IntegerField()
 
 def get_form(question_type):
     if question_type is QType.TF:

@@ -16,6 +16,8 @@ class Questionaire(models.Model):
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=500, blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
+    private = models.BooleanField(default=False)
+    PIN = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.title
